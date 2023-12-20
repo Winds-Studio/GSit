@@ -76,9 +76,9 @@ public class PlayerSitEvents implements Listener {
 
         Entity bottom = GPM.getPassengerUtil().getBottomEntity(Event.getDismounted());
 
-        if(GPM.getCManager().PS_BOTTOM_RETURN && Event.getEntity().isValid() && Event.getEntity() instanceof Player && GPM.getPackageUtil() != null) GPM.getEntityUtil().posEntity(Event.getEntity(), bottom.getLocation());
+        if(GPM.getCManager().PS_BOTTOM_RETURN && Event.getEntity().isValid() && Event.getEntity() instanceof Player && GPM.getPackageUtil() != null) Bukkit.getPlayer(Event.getEntity().getUniqueId()).teleportAsync(bottom.getLocation());
 
-        if(Event.getDismounted().getScoreboardTags().contains(GPM.NAME + "_PlayerSeatEntity") && GPM.getPackageUtil() == null) GPM.getEntityUtil().posEntity(Event.getDismounted(), bottom.getLocation());
+        if(Event.getDismounted().getScoreboardTags().contains(GPM.NAME + "_PlayerSeatEntity") && GPM.getPackageUtil() == null) Bukkit.getPlayer(Event.getDismounted().getUniqueId()).teleportAsync(bottom.getLocation());
 
         GPM.getPlayerSitManager().stopPlayerSit(Event.getDismounted(), GetUpReason.GET_UP);
 
