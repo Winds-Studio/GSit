@@ -16,8 +16,10 @@ jobs:
         with:
           java-version: 17
           distribution: temurin
+
       - name: Build GSit
-        run: ./gradlew clean build
+        run: mvn clean package
+
       - name: Release GSit
         uses: marvinpinto/action-automatic-releases@master
         with:
