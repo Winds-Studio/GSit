@@ -1,0 +1,28 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@main
+      - name: Set up JDK
+        uses: actions/setup-java@main
+        with:
+          java-version: 17
+          distribution: temurin
+      - name: Build GSit
+        run: ./gradlew clean build
+      - name: Release GSit
+        uses: marvinpinto/action-automatic-releases@master
+        with:
+          title: "GSit"
+          automatic_release_tag: "build"
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          files: "build/libs/*.jar"
+          prerelease: true
