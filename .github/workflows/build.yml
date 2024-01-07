@@ -26,5 +26,5 @@ jobs:
           title: "GSit"
           automatic_release_tag: "build"
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          files: "build/libs/*.jar"
+          files: "target/*.jar"
           prerelease: true
