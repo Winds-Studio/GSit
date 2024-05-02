@@ -1,10 +1,9 @@
-package dev.geco.gsit.events.deprecated;
+package dev.geco.gsit.mcv.x.events;
 
 import org.bukkit.*;
 import org.bukkit.entity.*;
 import org.bukkit.event.*;
-
-import org.spigotmc.event.entity.*;
+import org.bukkit.event.entity.*;
 
 import dev.geco.gsit.GSitMain;
 import dev.geco.gsit.api.event.*;
