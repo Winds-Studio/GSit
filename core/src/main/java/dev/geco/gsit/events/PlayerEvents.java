@@ -28,8 +28,6 @@ public class PlayerEvents implements Listener {
         Player player = Event.getPlayer();
 
         GPM.getUManager().loginCheckForUpdates(player);
-
-        if(GPM.getPackageUtil() != null) GPM.getPackageUtil().registerPlayer(player);
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -46,8 +44,6 @@ public class PlayerEvents implements Listener {
         GPM.getToggleManager().clearToggleCache(player.getUniqueId());
 
         crawl_players.remove(player);
-
-        if(GPM.getPackageUtil() != null) GPM.getPackageUtil().unregisterPlayer(player);
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
@@ -67,7 +63,7 @@ public class PlayerEvents implements Listener {
 
         Entity entity = Event.getEntity();
 
-        if(!GPM.getCManager().GET_UP_DAMAGE || !(entity instanceof Player) || Event.getFinalDamage() <= 0d) return;
+        if(!GPM.getCManager().GET_UP_DAMAGE || !(entity instanceof Player) || Event.getDamage() <= 0d) return;
 
         Player player = (Player) entity;
 
@@ -81,15 +77,19 @@ public class PlayerEvents implements Listener {
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void PComPE(PlayerCommandPreprocessEvent Event) {
 
+        List<String> commands = GPM.getCManager().COMMANDBLACKLIST;
+
+        if(commands.isEmpty()) return;
+
         Player player = Event.getPlayer();
 
         String message = Event.getMessage();
 
-        if(message.length() > 1 && (GPM.getSitManager().isSitting(player) || GPM.getPoseManager().isPosing(player))) {
+        if(message.length() > 1 && (GPM.getSitManager().isSitting(player) || GPM.getPoseManager().isPosing(player) || GPM.getPlayerSitManager().isUsingPlayerSit(player))) {
 
             message = message.substring(1).split(" ")[0].toLowerCase();
 
-            if(GPM.getCManager().COMMANDBLACKLIST.stream().anyMatch(message::equalsIgnoreCase)) {
+            if(commands.stream().anyMatch(message::equalsIgnoreCase)) {
 
                 GPM.getMManager().sendMessage(player, "Messages.action-blocked-error");
 
