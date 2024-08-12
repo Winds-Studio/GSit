@@ -138,7 +138,7 @@ public class PoseManager {
             returnLocation.setPitch(poseSeat.getPlayer().getLocation().getPitch());
         }
 
-        if(poseSeat.getPlayer().isValid() && Safe) GPM.getEntityUtil().posEntity(poseSeat.getPlayer(), returnLocation);
+        if(poseSeat.getPlayer().isValid() && Safe) io.papermc.lib.PaperLib.teleportAsync(poseSeat.getPlayer(), returnLocation);
 
         GPM.getEntityUtil().removeSeatEntity(poseSeat.getSeat().getSeatEntity());
 

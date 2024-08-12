@@ -140,7 +140,7 @@ public class SitManager {
 
         seat.setLocation(seat.getLocation().add(BlockFace.getModX(), BlockFace.getModY(), BlockFace.getModZ()));
 
-        GPM.getEntityUtil().posEntity(seat.getSeatEntity(), seat.getLocation());
+        io.papermc.lib.PaperLib.teleportAsync(seat.getSeatEntity(), seat.getLocation());
     }
 
     public boolean removeSeat(LivingEntity Entity, GetUpReason Reason) { return removeSeat(Entity, Reason, true); }
@@ -171,9 +171,9 @@ public class SitManager {
             } catch (Throwable ignored) { }
         }
 
-        if(seat.getEntity().isValid() && Safe && GPM.getSVManager().isNewerOrVersion(17, 0)) GPM.getEntityUtil().posEntity(seat.getEntity(), returnLocation);
+        if(seat.getEntity().isValid() && Safe && GPM.getSVManager().isNewerOrVersion(17, 0)) io.papermc.lib.PaperLib.teleportAsync(seat.getEntity(), returnLocation);
 
-        if(seat.getSeatEntity().isValid() && !GPM.getSVManager().isNewerOrVersion(17, 0)) GPM.getEntityUtil().posEntity(seat.getSeatEntity(), returnLocation);
+        if(seat.getSeatEntity().isValid() && !GPM.getSVManager().isNewerOrVersion(17, 0)) io.papermc.lib.PaperLib.teleportAsync(seat.getSeatEntity(), returnLocation);
 
         GPM.getEntityUtil().removeSeatEntity(seat.getSeatEntity());
 
