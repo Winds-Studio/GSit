@@ -63,7 +63,7 @@ public class EntityEvents implements Listener {
 
         Entity bottom = GPM.getPassengerUtil().getBottomEntity(Event.getDismounted());
 
-        if(GPM.getCManager().PS_BOTTOM_RETURN && Event.getEntity().isValid() && Event.getEntity() instanceof Player) io.papermc.lib.PaperLib.teleportAsync(Event.getDismounted(), bottom.getLocation());
+        if(GPM.getCManager().PS_BOTTOM_RETURN && Event.getEntity().isValid() && Event.getEntity() instanceof Player) io.papermc.lib.PaperLib.teleportAsync(Event.getEntity(), bottom.getLocation());
 
         GPM.getPlayerSitManager().stopPlayerSit(Event.getDismounted(), GetUpReason.GET_UP);
 
