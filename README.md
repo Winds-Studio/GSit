@@ -17,6 +17,8 @@ Clone the repository:
 git clone https://github.com/Gecolay/GSit.git
 ```
 
+### Build
+
 Run the maven build command by your ide or in a terminal.
 
 `mvn clean package`

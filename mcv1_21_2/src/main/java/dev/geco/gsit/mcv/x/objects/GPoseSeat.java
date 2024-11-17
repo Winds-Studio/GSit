@@ -6,15 +6,14 @@ import com.mojang.authlib.*;
 import com.mojang.datafixers.util.*;
 
 import org.bukkit.*;
-import org.bukkit.block.data.*;
 import org.bukkit.event.*;
 import org.bukkit.event.entity.*;
 import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.*;
 import org.bukkit.entity.*;
 import org.bukkit.inventory.*;
-import org.bukkit.craftbukkit.v1_20_R2.*;
-import org.bukkit.craftbukkit.v1_20_R2.entity.*;
+import org.bukkit.craftbukkit.v1_21_R2.*;
+import org.bukkit.craftbukkit.v1_21_R2.entity.*;
 
 import net.minecraft.core.*;
 import net.minecraft.nbt.*;
@@ -46,7 +45,7 @@ public class GPoseSeat implements IGPoseSeat {
 
     private final Location blockLocation;
 
-    private final BlockData bedData;
+    private final org.bukkit.block.Block bedBlock;
     private final BlockPos bedPos;
 
     private final Direction direction;
@@ -57,6 +56,7 @@ public class GPoseSeat implements IGPoseSeat {
     protected ClientboundRemoveEntitiesPacket removeNpcPacket;
     protected ClientboundAddEntityPacket createNpcPacket;
     protected ClientboundSetEntityDataPacket metaNpcPacket;
+    protected ClientboundUpdateAttributesPacket attributeNpcPacket;
     protected ClientboundTeleportEntityPacket teleportNpcPacket;
     protected ClientboundMoveEntityPacket.PosRot rotateNpcPacket;
     protected ClientboundBundlePacket bundle;
@@ -65,8 +65,6 @@ public class GPoseSeat implements IGPoseSeat {
     private net.minecraft.world.item.ItemStack mainSlotCache;
     private float directionCache;
     protected int renderRange;
-
-    private UUID task;
 
     private final Listener listener;
 
@@ -83,12 +81,16 @@ public class GPoseSeat implements IGPoseSeat {
         renderRange = seatPlayer.getWorld().getSimulationDistance() * 16;
 
         playerNpc = createNPC();
-        playerNpc.moveTo(seatLocation.getX(), seatLocation.getY() + GPM.getSitManager().BASE_OFFSET + (pose == org.bukkit.entity.Pose.SLEEPING ? 0.1125d : 0d), seatLocation.getZ(), 0f, 0f);
+        double offset = seatLocation.getY() + GPM.getSitManager().BASE_OFFSET;
+        double scale = serverPlayer.getScale();
+        if(pose == org.bukkit.entity.Pose.SLEEPING) offset += 0.1125d * scale;
+        if(pose == org.bukkit.entity.Pose.SWIMMING) offset += -0.19 * scale;
+        playerNpc.moveTo(seatLocation.getX(), offset, seatLocation.getZ(), 0f, 0f);
 
         blockLocation = seatLocation.clone();
         blockLocation.setY(blockLocation.getWorld().getMinHeight());
 
-        bedData = blockLocation.getBlock().getBlockData();
+        bedBlock = blockLocation.getBlock();
         bedPos = new BlockPos(blockLocation.getBlockX(), blockLocation.getBlockY(), blockLocation.getBlockZ());
 
         direction = getDirection();
@@ -97,8 +99,8 @@ public class GPoseSeat implements IGPoseSeat {
         addNpcInfoPacket = new ClientboundPlayerInfoUpdatePacket(EnumSet.of(ClientboundPlayerInfoUpdatePacket.Action.ADD_PLAYER, ClientboundPlayerInfoUpdatePacket.Action.INITIALIZE_CHAT, ClientboundPlayerInfoUpdatePacket.Action.UPDATE_GAME_MODE, ClientboundPlayerInfoUpdatePacket.Action.UPDATE_LATENCY, ClientboundPlayerInfoUpdatePacket.Action.UPDATE_DISPLAY_NAME), Collections.singletonList(playerNpc));
         removeNpcInfoPacket = new ClientboundPlayerInfoRemovePacket(Collections.singletonList(playerNpc.getUUID()));
         removeNpcPacket = new ClientboundRemoveEntitiesPacket(playerNpc.getId());
-        createNpcPacket = new ClientboundAddEntityPacket(playerNpc);
-        if(pose == org.bukkit.entity.Pose.SLEEPING) teleportNpcPacket = new ClientboundTeleportEntityPacket(playerNpc);
+        createNpcPacket = new ClientboundAddEntityPacket(playerNpc.getId(), playerNpc.getUUID(), playerNpc.getX(), playerNpc.getY(), playerNpc.getZ(), playerNpc.getXRot(), playerNpc.getYRot(), playerNpc.getType(), 0, playerNpc.getDeltaMovement(), playerNpc.getYHeadRot());
+        if(pose == org.bukkit.entity.Pose.SLEEPING) teleportNpcPacket = new ClientboundTeleportEntityPacket(playerNpc.getId(), net.minecraft.world.entity.PositionMoveRotation.of(playerNpc), Set.of(), false);
         if(pose == org.bukkit.entity.Pose.SPIN_ATTACK) rotateNpcPacket = new ClientboundMoveEntityPacket.PosRot(playerNpc.getId(), (short) 0, (short) 0, (short) 0, (byte) 0, getFixedRotation(-90f), true);
 
         listener = new Listener() {
@@ -161,14 +163,19 @@ public class GPoseSeat implements IGPoseSeat {
         }
 
         metaNpcPacket = new ClientboundSetEntityDataPacket(playerNpc.getId(), playerNpc.getEntityData().isDirty() ? playerNpc.getEntityData().packDirty() : playerNpc.getEntityData().getNonDefaultValues());
+        attributeNpcPacket = new ClientboundUpdateAttributesPacket(playerNpc.getId(), serverPlayer.getAttributes().getSyncableAttributes());
 
-        List<Packet<ClientGamePacketListener>> packages = new ArrayList<>();
+        List<Packet<? super ClientGamePacketListener>> packages = new ArrayList<>();
 
         packages.add(addNpcInfoPacket);
         packages.add(createNpcPacket);
         if(pose == Pose.SLEEPING) packages.add(setBedPacket);
         packages.add(metaNpcPacket);
-        if(pose == Pose.SLEEPING) packages.add(teleportNpcPacket);
+        packages.add(attributeNpcPacket);
+        if(pose == Pose.SLEEPING) {
+            packages.add(teleportNpcPacket);
+            packages.add(teleportNpcPacket);
+        }
         if(pose == Pose.SPIN_ATTACK) packages.add(rotateNpcPacket);
 
         bundle = new ClientboundBundlePacket(packages);
@@ -177,51 +184,7 @@ public class GPoseSeat implements IGPoseSeat {
 
         Bukkit.getPluginManager().registerEvents(listener, GPM);
 
-        startUpdate();
-    }
-
-    private void spawnToPlayer(Player Player) { sendPacket(Player, bundle); }
-
-    public void remove() {
-
-        stopUpdate();
-
-        HandlerList.unregisterAll(listener);
-        seatPlayer.removeScoreboardTag(PoseManager.POSE_TAG);
-
-        for(Player nearPlayer : nearPlayers) removeToPlayer(nearPlayer);
-
-        if(pose == Pose.SLEEPING && GPM.getCManager().P_LAY_NIGHT_SKIP) seatPlayer.setSleepingIgnored(false);
-
-        serverPlayer.setInvisible(false);
-
-        setEquipmentVisibility(true);
-
-        serverPlayer.getEntityData().set(EntityDataSerializers.COMPOUND_TAG.createAccessor(19), playerNpc.getEntityData().get(EntityDataSerializers.COMPOUND_TAG.createAccessor(19)));
-        serverPlayer.getEntityData().set(EntityDataSerializers.COMPOUND_TAG.createAccessor(20), playerNpc.getEntityData().get(EntityDataSerializers.COMPOUND_TAG.createAccessor(20)));
-
-        serverPlayer.setGlowingTag(playerNpc.hasGlowingTag());
-    }
-
-    private void removeToPlayer(Player Player) {
-
-        ServerPlayer removePlayer = ((CraftPlayer) Player).getHandle();
-        sendPacket(removePlayer, removeNpcInfoPacket);
-        sendPacket(removePlayer, removeNpcPacket);
-
-        Player.sendBlockChange(blockLocation, bedData);
-    }
-
-    private List<Player> getNearPlayers() {
-
-        List<Player> playerList = new ArrayList<>();
-        seatPlayer.getWorld().getPlayers().stream().filter(player -> seat.getLocation().distance(player.getLocation()) <= renderRange && player.canSee(seatPlayer)).forEach(playerList::add);
-        return playerList;
-    }
-
-    private void startUpdate() {
-
-        task = GPM.getTManager().runAtFixedRate(() -> {
+        ((SeatEntity) ((CraftEntity) seat.getSeatEntity()).getHandle()).setCallback(() -> {
 
             List<Player> playerList = getNearPlayers();
 
@@ -261,10 +224,47 @@ public class GPoseSeat implements IGPoseSeat {
 
                 for(Player nearPlayer : nearPlayers) nearPlayer.playSound(seat.getLocation(), Sound.ENTITY_FOX_SLEEP, SoundCategory.PLAYERS, 1.5f, 0);
             }
-        }, false, 0, 1);
+        });
     }
 
-    private void stopUpdate() { GPM.getTManager().cancel(task); }
+    private void spawnToPlayer(Player Player) { sendPacket(Player, bundle); }
+
+    public void remove() {
+
+        ((SeatEntity) ((CraftEntity) seat.getSeatEntity()).getHandle()).setCallback(null);
+
+        HandlerList.unregisterAll(listener);
+        seatPlayer.removeScoreboardTag(PoseManager.POSE_TAG);
+
+        for(Player nearPlayer : nearPlayers) removeToPlayer(nearPlayer);
+
+        if(pose == Pose.SLEEPING && GPM.getCManager().P_LAY_NIGHT_SKIP) seatPlayer.setSleepingIgnored(false);
+
+        serverPlayer.setInvisible(false);
+
+        setEquipmentVisibility(true);
+
+        serverPlayer.getEntityData().set(EntityDataSerializers.COMPOUND_TAG.createAccessor(19), playerNpc.getEntityData().get(EntityDataSerializers.COMPOUND_TAG.createAccessor(19)));
+        serverPlayer.getEntityData().set(EntityDataSerializers.COMPOUND_TAG.createAccessor(20), playerNpc.getEntityData().get(EntityDataSerializers.COMPOUND_TAG.createAccessor(20)));
+
+        serverPlayer.setGlowingTag(playerNpc.hasGlowingTag());
+    }
+
+    private void removeToPlayer(Player Player) {
+
+        ServerPlayer removePlayer = ((CraftPlayer) Player).getHandle();
+        sendPacket(removePlayer, removeNpcInfoPacket);
+        sendPacket(removePlayer, removeNpcPacket);
+
+        Player.sendBlockChange(blockLocation, bedBlock.getBlockData());
+    }
+
+    private List<Player> getNearPlayers() {
+
+        List<Player> playerList = new ArrayList<>();
+        seatPlayer.getWorld().getPlayers().stream().filter(player -> seat.getLocation().distance(player.getLocation()) <= renderRange && player.canSee(seatPlayer)).forEach(playerList::add);
+        return playerList;
+    }
 
     private float fixYaw(float Yaw) { return (Yaw < 0f ? 360f + Yaw : Yaw) % 360f; }
 
