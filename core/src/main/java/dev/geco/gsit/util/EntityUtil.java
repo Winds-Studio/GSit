@@ -30,6 +30,11 @@ public class EntityUtil implements IEntityUtil {
 
     @Override
     public void setEntityLocation(Entity entity, Location location) {
+        if (true) {
+            // Use teleportAsync, calling events, and prevent incompatibility with anti cheats
+            entity.teleportAsync(location);
+            return;
+        }
         try {
             Method getHandle = entity.getClass().getMethod("getHandle");
             Object serverEntity = getHandle.invoke(entity);
