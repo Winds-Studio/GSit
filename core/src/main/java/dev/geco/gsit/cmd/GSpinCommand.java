@@ -1,119 +1,87 @@
 package dev.geco.gsit.cmd;
 
-import org.jetbrains.annotations.*;
-
-import org.bukkit.*;
-import org.bukkit.block.*;
-import org.bukkit.command.*;
-import org.bukkit.entity.*;
-import org.bukkit.util.*;
-
 import dev.geco.gsit.GSitMain;
-import dev.geco.gsit.objects.*;
+import dev.geco.gsit.object.GStopReason;
+import dev.geco.gsit.object.IGPose;
+import org.bukkit.Location;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+import org.bukkit.entity.Pose;
+import org.bukkit.util.BoundingBox;
+import org.jetbrains.annotations.NotNull;
 
 public class GSpinCommand implements CommandExecutor {
 
-    private final GSitMain GPM;
+    private final GSitMain gSitMain;
 
-    public GSpinCommand(GSitMain GPluginMain) { GPM = GPluginMain; }
+    public GSpinCommand(GSitMain gSitMain) {
+        this.gSitMain = gSitMain;
+    }
 
     @Override
-    public boolean onCommand(@NotNull CommandSender Sender, @NotNull Command Command, @NotNull String Label, String[] Args) {
-
-        if(!(Sender instanceof Player)) {
-
-            GPM.getMManager().sendMessage(Sender, "Messages.command-sender-error");
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
+        if(!(sender instanceof Player player)) {
+            gSitMain.getMessageService().sendMessage(sender, "Messages.command-sender-error");
             return true;
         }
 
-        Player player = (Player) Sender;
-
-        if(!GPM.getPManager().hasPermission(Sender, "Spin", "Pose.*")) {
-
-            GPM.getMManager().sendMessage(Sender, "Messages.command-permission-error");
+        if(!gSitMain.getPermissionService().hasPermission(sender, "Spin", "Pose.*")) {
+            gSitMain.getMessageService().sendMessage(sender, "Messages.command-permission-error");
             return true;
         }
 
-        if(!GPM.getPoseManager().isAvailable()) {
-
-            String v = Bukkit.getServer().getClass().getPackage().getName();
-            v = v.substring(v.lastIndexOf('.') + 1);
-
-            GPM.getMManager().sendMessage(Sender, "Messages.command-version-error", "%Version%", v);
+        if(!gSitMain.getPoseService().isAvailable()) {
+            gSitMain.getMessageService().sendMessage(sender, "Messages.command-version-error", "%Version%", gSitMain.getVersionManager().getServerVersion());
             return true;
         }
 
-        IGPoseSeat currentPoseSeat = GPM.getPoseManager().getPose(player);
-
-        if(currentPoseSeat != null && currentPoseSeat.getPose() == Pose.SPIN_ATTACK) {
-
-            GPM.getPoseManager().removePose(player, GetUpReason.GET_UP);
+        IGPose poseObject = gSitMain.getPoseService().getPoseByPlayer(player);
+        if(poseObject != null && poseObject.getPose() == Pose.SPIN_ATTACK) {
+            gSitMain.getPoseService().removePose(poseObject, GStopReason.GET_UP);
             return true;
         }
 
         if(!player.isValid() || player.isSneaking() || !player.isOnGround() || player.getVehicle() != null || player.isSleeping()) {
-
-            GPM.getMManager().sendMessage(Sender, "Messages.action-pose-now-error");
+            gSitMain.getMessageService().sendMessage(sender, "Messages.action-pose-now-error");
             return true;
         }
 
-        if(!GPM.getEnvironmentUtil().isInAllowedWorld(player)) {
-
-            GPM.getMManager().sendMessage(Sender, "Messages.action-pose-world-error");
+        if(!gSitMain.getEnvironmentUtil().isEntityInAllowedWorld(player)) {
+            gSitMain.getMessageService().sendMessage(sender, "Messages.action-pose-world-error");
             return true;
         }
 
         Location playerLocation = player.getLocation();
-
         Block block = playerLocation.getBlock().isPassable() ? playerLocation.subtract(0, 0.0625, 0).getBlock() : playerLocation.getBlock();
-
-        if(GPM.getCManager().MATERIALBLACKLIST.contains(block.getType())) {
-
-            GPM.getMManager().sendMessage(Sender, "Messages.action-pose-location-error");
+        if(gSitMain.getConfigService().MATERIALBLACKLIST.contains(block.getType())) {
+            gSitMain.getMessageService().sendMessage(sender, "Messages.action-pose-location-error");
             return true;
         }
 
         boolean overSize = false;
-
         try {
-
             for(BoundingBox boundingBox : block.getCollisionShape().getBoundingBoxes()) if(boundingBox.getMaxY() > 1.25) overSize = true;
-        } catch (Throwable ignored) { }
-
-        if(!GPM.getCManager().ALLOW_UNSAFE && !(block.getRelative(BlockFace.UP).isPassable() && !overSize && (!block.isPassable() || !GPM.getCManager().CENTER_BLOCK))) {
-
-            GPM.getMManager().sendMessage(Sender, "Messages.action-pose-location-error");
+        } catch(Throwable ignored) { }
+        if(!gSitMain.getConfigService().ALLOW_UNSAFE && !(block.getRelative(BlockFace.UP).isPassable() && !overSize && (!block.isPassable() || !gSitMain.getConfigService().CENTER_BLOCK))) {
+            gSitMain.getMessageService().sendMessage(sender, "Messages.action-pose-location-error");
             return true;
         }
 
-        if(!GPM.getPManager().hasPermission(Sender, "ByPass.Region", "ByPass.*")) {
-
-            if(GPM.getWorldGuardLink() != null && !GPM.getWorldGuardLink().checkFlag(block.getLocation(), GPM.getWorldGuardLink().getFlag("pose"))) {
-
-                GPM.getMManager().sendMessage(Sender, "Messages.action-pose-region-error");
-                return true;
-            }
-
-            if(GPM.getGriefPreventionLink() != null && !GPM.getGriefPreventionLink().check(block.getLocation(), player)) {
-
-                GPM.getMManager().sendMessage(Sender, "Messages.action-pose-region-error");
-                return true;
-            }
-
-            if(GPM.getPlotSquaredLink() != null && !GPM.getPlotSquaredLink().canCreateSeat(block.getLocation(), player)) {
-
-                GPM.getMManager().sendMessage(Sender, "Messages.action-pose-region-error");
-                return true;
-            }
-        }
-
-        if(!GPM.getCManager().SAME_BLOCK_REST && !GPM.getPoseManager().kickPose(block, player)) {
-
-            GPM.getMManager().sendMessage(Sender, "Messages.action-pose-kick-error");
+        if(!gSitMain.getEnvironmentUtil().canUseInLocation(block.getLocation(), player, "pose")) {
+            gSitMain.getMessageService().sendMessage(sender, "Messages.action-pose-region-error");
             return true;
         }
 
-        if(GPM.getPoseManager().createPose(block, player, Pose.SPIN_ATTACK) == null) GPM.getMManager().sendMessage(Sender, "Messages.action-pose-error");
+        if(!gSitMain.getConfigService().SAME_BLOCK_REST && !gSitMain.getPoseService().kickPoseEntitiesFromBlock(block, player)) {
+            gSitMain.getMessageService().sendMessage(sender, "Messages.action-pose-kick-error");
+            return true;
+        }
+
+        if(gSitMain.getPoseService().createPose(block, player, Pose.SPIN_ATTACK) == null) gSitMain.getMessageService().sendMessage(sender, "Messages.action-pose-error");
         return true;
     }
 

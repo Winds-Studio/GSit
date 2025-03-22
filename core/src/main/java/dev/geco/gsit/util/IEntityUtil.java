@@ -1,30 +1,30 @@
 package dev.geco.gsit.util;
 
-import java.util.*;
+import dev.geco.gsit.object.GSeat;
+import dev.geco.gsit.object.IGCrawl;
+import dev.geco.gsit.object.IGPose;
+import org.bukkit.Location;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.Player;
+import org.bukkit.entity.Pose;
 
-import org.bukkit.*;
-import org.bukkit.entity.*;
-
-import dev.geco.gsit.objects.*;
+import java.util.Set;
+import java.util.UUID;
 
 public interface IEntityUtil {
 
-    HashMap<Integer, Entity> getSeatMap();
+    void setEntityLocation(Entity entity, Location location);
 
-    void posEntity(Entity Entity, Location Location);
+    boolean isSitLocationValid(Location location);
 
-    boolean isLocationValid(Location Location);
+    boolean isPlayerSitLocationValid(Location location);
 
-    boolean isPlayerSitLocationValid(Entity Holder);
+    Entity createSeatEntity(Location location, Entity entity, boolean canRotate);
 
-    Entity createSeatEntity(Location Location, Entity Rider, boolean Rotate);
+    Set<UUID> createPlayerSeatEntities(Player player, Player target);
 
-    void removeSeatEntity(Entity Entity);
+    IGPose createPose(GSeat seat, Pose pose);
 
-    UUID createPlayerSeatEntity(Entity Holder, Entity Rider);
-
-    IGPoseSeat createPoseSeatObject(GSeat Seat, Pose Pose);
-
-    IGCrawl createCrawlObject(Player Player);
+    IGCrawl createCrawl(Player player);
 
 }

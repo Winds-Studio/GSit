@@ -19,11 +19,9 @@ git clone https://github.com/Gecolay/GSit.git
 
 ### Build
 
-Run the maven build command by your ide or in a terminal.
+Run the `gradle build` command.
 
-`mvn clean package`
-
-The final `GSit-x.x-x.jar` file will be in the [`target`](./target) folder.
+The final `GSit-x.x-x.jar` file will be in the [`build/libs`](./build/libs) folder.
 
 ## Pull requests
 

@@ -1,70 +1,36 @@
 package dev.geco.gsit.util;
 
-import org.bukkit.block.*;
-import org.bukkit.block.data.*;
-import org.bukkit.block.data.type.*;
-import org.bukkit.entity.*;
-
 import dev.geco.gsit.GSitMain;
-import dev.geco.gsit.objects.*;
+import org.bukkit.Location;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.Player;
 
 public class EnvironmentUtil {
 
-    private final GSitMain GPM;
+    private final GSitMain gSitMain;
 
-    public static final double STAIR_XZ_OFFSET = 0.123d;
-
-    public static final double STAIR_Y_OFFSET = 0.5d;
-
-    public EnvironmentUtil(GSitMain GPluginMain) { GPM = GPluginMain; }
-
-    public boolean isInAllowedWorld(Entity Entity) {
-
-        boolean allowed = !GPM.getCManager().WORLDBLACKLIST.contains(Entity.getWorld().getName());
-
-        if(!GPM.getCManager().WORLDWHITELIST.isEmpty() && !GPM.getCManager().WORLDWHITELIST.contains(Entity.getWorld().getName())) allowed = false;
-
-        return allowed || GPM.getPManager().hasPermission(Entity, "ByPass.World", "ByPass.*");
+    public EnvironmentUtil(GSitMain gSitMain) {
+        this.gSitMain = gSitMain;
     }
 
-    public GSeat createSeatForStair(Block Block, LivingEntity Entity) {
+    public boolean isEntityInAllowedWorld(Entity entity) {
+        boolean allowed = !gSitMain.getConfigService().WORLDBLACKLIST.contains(entity.getWorld().getName());
+        if(!gSitMain.getConfigService().WORLDWHITELIST.isEmpty() && !gSitMain.getConfigService().WORLDWHITELIST.contains(entity.getWorld().getName())) allowed = false;
+        return allowed || gSitMain.getPermissionService().hasPermission(entity, "ByPass.World", "ByPass.*");
+    }
 
-        Stairs blockData = (Stairs) Block.getBlockData();
-
-        if(blockData.getHalf() != Bisected.Half.BOTTOM) return GPM.getSitManager().createSeat(Block, Entity);
-
-        BlockFace blockFace = blockData.getFacing().getOppositeFace();
-
-        Stairs.Shape stairShape = blockData.getShape();
-
-        if(blockData.getShape() == Stairs.Shape.STRAIGHT) {
-
-            switch(blockFace) {
-
-                case EAST: return GPM.getSitManager().createSeat(Block, Entity, false, STAIR_XZ_OFFSET, -STAIR_Y_OFFSET, 0d, -90f, true);
-                case SOUTH: return GPM.getSitManager().createSeat(Block, Entity, false, 0d, -STAIR_Y_OFFSET, STAIR_XZ_OFFSET, 0f, true);
-                case WEST: return GPM.getSitManager().createSeat(Block, Entity, false, -STAIR_XZ_OFFSET, -STAIR_Y_OFFSET, 0d, 90f, true);
-                case NORTH: return GPM.getSitManager().createSeat(Block, Entity, false, 0d, -STAIR_Y_OFFSET, -STAIR_XZ_OFFSET, 180f, true);
-            }
-
-            return null;
+    public boolean canUseInLocation(Location location, Player player, String flag) {
+        if(gSitMain.getPermissionService().hasPermission(player, "ByPass.Region", "ByPass.*")) return true;
+        if(gSitMain.getPlotSquaredLink() != null) {
+            if(flag.equalsIgnoreCase("sit")) {
+                if(!gSitMain.getPlotSquaredLink().canUseSitInLocation(location, player)) return false;
+            } else if(flag.equalsIgnoreCase("playersit")) {
+                if(!gSitMain.getPlotSquaredLink().canUsePlayerSitInLocation(location, player)) return false;
+            } else if(!gSitMain.getPlotSquaredLink().canUseInLocation(location, player)) return false;
         }
-
-        if(blockFace == BlockFace.NORTH && stairShape == Stairs.Shape.OUTER_RIGHT || blockFace == BlockFace.EAST && stairShape == Stairs.Shape.OUTER_LEFT || blockFace == BlockFace.NORTH && stairShape == Stairs.Shape.INNER_RIGHT || blockFace == BlockFace.EAST && stairShape == Stairs.Shape.INNER_LEFT) {
-
-            return GPM.getSitManager().createSeat(Block, Entity, false, STAIR_XZ_OFFSET, -STAIR_Y_OFFSET, -STAIR_XZ_OFFSET, -135f, true);
-        } else if(blockFace == BlockFace.NORTH && stairShape == Stairs.Shape.OUTER_LEFT || blockFace == BlockFace.WEST && stairShape == Stairs.Shape.OUTER_RIGHT || blockFace == BlockFace.NORTH && stairShape == Stairs.Shape.INNER_LEFT || blockFace == BlockFace.WEST && stairShape == Stairs.Shape.INNER_RIGHT) {
-
-            return GPM.getSitManager().createSeat(Block, Entity, false, -STAIR_XZ_OFFSET, -STAIR_Y_OFFSET, -STAIR_XZ_OFFSET, 135f, true);
-        } else if(blockFace == BlockFace.SOUTH && stairShape == Stairs.Shape.OUTER_RIGHT || blockFace == BlockFace.WEST && stairShape == Stairs.Shape.OUTER_LEFT || blockFace == BlockFace.SOUTH && stairShape == Stairs.Shape.INNER_RIGHT || blockFace == BlockFace.WEST && stairShape == Stairs.Shape.INNER_LEFT) {
-
-            return GPM.getSitManager().createSeat(Block, Entity, false, -STAIR_XZ_OFFSET, -STAIR_Y_OFFSET, STAIR_XZ_OFFSET, 45f, true);
-        } else if(blockFace == BlockFace.SOUTH && stairShape == Stairs.Shape.OUTER_LEFT || blockFace == BlockFace.EAST && stairShape == Stairs.Shape.OUTER_RIGHT || blockFace == BlockFace.SOUTH && stairShape == Stairs.Shape.INNER_LEFT || blockFace == BlockFace.EAST && stairShape == Stairs.Shape.INNER_RIGHT) {
-
-            return GPM.getSitManager().createSeat(Block, Entity, false, STAIR_XZ_OFFSET, -STAIR_Y_OFFSET, STAIR_XZ_OFFSET, -45f, true);
-        }
-
-        return null;
+        if(gSitMain.getWorldGuardLink() != null && !gSitMain.getWorldGuardLink().canUseInLocation(location, gSitMain.getWorldGuardLink().getFlag(flag))) return false;
+        if(gSitMain.getGriefPreventionLink() != null && !gSitMain.getGriefPreventionLink().canUseInLocation(location, player)) return false;
+        return true;
     }
 
 }
