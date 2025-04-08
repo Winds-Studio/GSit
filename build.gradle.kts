@@ -1,7 +1,7 @@
 plugins {
     `java-library`
     `maven-publish`
-    id("com.gradleup.shadow") version "9.0.0-beta11"
+    id("com.gradleup.shadow") version "9.0.0-beta12"
     id("io.papermc.paperweight.userdev") version "2.0.0-beta.16" apply false
 }
 
@@ -43,6 +43,7 @@ dependencies {
     api(project(":v1_21", configuration = "reobf"))
     api(project(":v1_21_2", configuration = "reobf"))
     api(project(":v1_21_4", configuration = "reobf"))
+    api(project(":v1_21_5", configuration = "reobf"))
 }
 
 tasks {
