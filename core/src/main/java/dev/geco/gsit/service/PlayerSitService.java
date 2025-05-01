@@ -87,10 +87,11 @@ public class PlayerSitService {
             topToBottomStacks.remove(passengers.getKey());
             for(UUID passenger : passengers.getValue()) {
                 Entity passengerEntity = Bukkit.getEntity(passenger);
-                if(passengerEntity != null) {
-                    gSitMain.getTaskService().run(() -> {
-                        if(passengerEntity.isValid()) passengerEntity.remove();
-                    }, passengerEntity.getLocation());
+                if(passengerEntity == null) continue;
+                try {
+                    passengerEntity.remove();
+                } catch(Throwable e) {
+                    gSitMain.getTaskService().run(passengerEntity::remove, passengerEntity);
                 }
             }
             String key = source.getUniqueId().toString() + passengers.getKey();
@@ -106,10 +107,11 @@ public class PlayerSitService {
             bottomToTopStacks.remove(vehicles.getKey());
             for(UUID vehicle : vehicles.getValue()) {
                 Entity vehicleEntity = Bukkit.getEntity(vehicle);
-                if(vehicleEntity != null) {
-                    gSitMain.getTaskService().run(() -> {
-                        if(vehicleEntity.isValid()) vehicleEntity.remove();
-                    }, vehicleEntity.getLocation());
+                if(vehicleEntity == null) continue;
+                try {
+                    vehicleEntity.remove();
+                } catch(Throwable e) {
+                    gSitMain.getTaskService().run(vehicleEntity::remove, vehicleEntity);
                 }
             }
             String key = vehicles.getKey().toString() + source.getUniqueId();
