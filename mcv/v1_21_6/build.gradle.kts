@@ -7,13 +7,12 @@ dependencies {
     paperweight.paperDevBundle("1.21.6-R0.1-SNAPSHOT")
 }
 
-//paperweight.reobfArtifactConfiguration = io.papermc.paperweight.userdev.ReobfArtifactConfiguration.REOBF_PRODUCTION
 paperweight.reobfArtifactConfiguration = io.papermc.paperweight.userdev.ReobfArtifactConfiguration.MOJANG_PRODUCTION
 
 java {
-    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    toolchain.languageVersion = JavaLanguageVersion.of(24)
 }
 
-/*tasks.assemble {
-    dependsOn(tasks.reobfJar)
-}*/
+tasks.compileJava {
+    options.release = 21
+}
