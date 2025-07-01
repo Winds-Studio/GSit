@@ -31,6 +31,7 @@ public class SitService {
 
     public static final double STAIR_XZ_OFFSET = 0.123d;
     public static final double STAIR_Y_OFFSET = 0.5d;
+    public static final String SIT_TAG = GSitMain.NAME + "_sit";
 
     private final GSitMain gSitMain;
     private final double baseOffset;
@@ -133,6 +134,7 @@ public class SitService {
         if(preEntityStopSitEvent.isCancelled() && stopReason.isCancellable()) return false;
 
         Entity entity = seat.getEntity();
+        entityBlocked.add(entity.getUniqueId());
         if(useSafeDismount) handleSafeSeatDismount(seat);
 
         Set<GSeat> blockSeatList = blockSeats.remove(seat.getBlock());
@@ -142,6 +144,7 @@ public class SitService {
         }
         seats.remove(entity.getUniqueId());
         seat.getSeatEntity().remove();
+        entityBlocked.remove(entity.getUniqueId());
         Bukkit.getPluginManager().callEvent(new EntityStopSitEvent(seat, stopReason));
         sitUsageNanoTime += seat.getLifetimeInNanoSeconds();
 
@@ -156,25 +159,13 @@ public class SitService {
 
         Location returnLocation = gSitMain.getConfigService().GET_UP_RETURN ? seat.getReturnLocation() : upLocation;
 
-        if(entity.isValid()) entityBlocked.add(entity.getUniqueId());
-
         Location entityLocation = entity.getLocation();
 
         returnLocation.setYaw(entityLocation.getYaw());
         returnLocation.setPitch(entityLocation.getPitch());
 
-        if(seat.getSeatEntity().isValid()) gSitMain.getEntityUtil().setEntityLocation(seat.getSeatEntity(), returnLocation);
-        if(entity.isValid()) gSitMain.getEntityUtil().setEntityLocation(entity, returnLocation);
-
-        gSitMain.getTaskService().runDelayed(() -> {
-            if(seat.getSeatEntity().isValid()) gSitMain.getEntityUtil().setEntityLocation(seat.getSeatEntity(), returnLocation);
-            if(gSitMain.supportsFoliaFeature()) gSitMain.getTaskService().runDelayed(() -> {
-                if(entity.isValid()) gSitMain.getEntityUtil().setEntityLocation(entity, returnLocation);
-            }, true, Bukkit.isOwnedByCurrentRegion(entity) ? entity : null, 0);
-            else if(entity.isValid()) gSitMain.getEntityUtil().setEntityLocation(entity, returnLocation);
-
-            entityBlocked.remove(entity.getUniqueId());
-        }, returnLocation, 1);
+        gSitMain.getEntityUtil().setEntityLocation(entity, returnLocation);
+        if(!gSitMain.getVersionManager().isNewerOrVersion(17, 0)) gSitMain.getEntityUtil().setEntityLocation(seat.getSeatEntity(), returnLocation);
     }
 
     public GSeat createStairSeatForEntity(Block block, LivingEntity entity) {
