@@ -83,6 +83,7 @@ public class PlayerSitService {
         }
 
         if(passengers != null) {
+            source.eject();
             bottomToTopStacks.remove(source.getUniqueId());
             topToBottomStacks.remove(passengers.getKey());
             for(UUID passenger : passengers.getValue()) {
@@ -99,6 +100,7 @@ public class PlayerSitService {
         }
 
         if(vehicles != null) {
+            source.leaveVehicle();
             topToBottomStacks.remove(source.getUniqueId());
             bottomToTopStacks.remove(vehicles.getKey());
             for(UUID vehicle : vehicles.getValue()) {
