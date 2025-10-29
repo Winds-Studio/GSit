@@ -20,6 +20,7 @@ public class VersionService {
         VERSION_MAPPING.put("v1_21_3", "v1_21_2");
         VERSION_MAPPING.put("v1_21_7", "v1_21_6");
         VERSION_MAPPING.put("v1_21_8", "v1_21_6");
+        VERSION_MAPPING.put("v1_21_10", "v1_21_9");
     }
     private final GSitMain gSitMain;
     private final String serverVersion;
@@ -32,10 +33,10 @@ public class VersionService {
         serverVersion = rawServerVersion.substring(0, rawServerVersion.indexOf('-'));
         if(!isNewerOrVersion(18, 0)) return;
         packagePath = gSitMain.getClass().getPackage().getName() + ".mcv." + getPackageVersion();
-        available = hasPackageClass("object.SeatEntity");
+        available = hasPackageClass("entity.SeatEntity");
         if(available) return;
         packagePath = gSitMain.getClass().getPackage().getName() + ".mcv." + LATEST_VERSION;
-        available = hasPackageClass("object.SeatEntity");
+        available = hasPackageClass("entity.SeatEntity");
     }
 
     public String getServerVersion() { return serverVersion; }

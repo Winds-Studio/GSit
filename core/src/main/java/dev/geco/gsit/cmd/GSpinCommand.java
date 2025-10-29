@@ -1,8 +1,9 @@
 package dev.geco.gsit.cmd;
 
 import dev.geco.gsit.GSitMain;
-import dev.geco.gsit.object.GStopReason;
-import dev.geco.gsit.object.IGPose;
+import dev.geco.gsit.model.PoseType;
+import dev.geco.gsit.model.StopReason;
+import dev.geco.gsit.model.Pose;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -10,7 +11,6 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Pose;
 import org.bukkit.util.BoundingBox;
 import org.jetbrains.annotations.NotNull;
 
@@ -39,9 +39,9 @@ public class GSpinCommand implements CommandExecutor {
             return true;
         }
 
-        IGPose poseObject = gSitMain.getPoseService().getPoseByPlayer(player);
-        if(poseObject != null && poseObject.getPose() == Pose.SPIN_ATTACK) {
-            gSitMain.getPoseService().removePose(poseObject, GStopReason.GET_UP);
+        Pose pose = gSitMain.getPoseService().getPoseByPlayer(player);
+        if(pose != null && pose.getPoseType() == PoseType.SPIN) {
+            gSitMain.getPoseService().removePose(pose, StopReason.GET_UP);
             return true;
         }
 
@@ -64,7 +64,10 @@ public class GSpinCommand implements CommandExecutor {
 
         boolean overSize = false;
         try {
-            for(BoundingBox boundingBox : block.getCollisionShape().getBoundingBoxes()) if(boundingBox.getMaxY() > 1.25) overSize = true;
+            for(BoundingBox boundingBox : block.getCollisionShape().getBoundingBoxes()) if(boundingBox.getMaxY() > 1.25) {
+                overSize = true;
+                break;
+            }
         } catch(Throwable ignored) { }
         if(!gSitMain.getConfigService().ALLOW_UNSAFE && !(block.getRelative(BlockFace.UP).isPassable() && !overSize && (!block.isPassable() || !gSitMain.getConfigService().CENTER_BLOCK))) {
             gSitMain.getMessageService().sendMessage(sender, "Messages.action-pose-location-error");
@@ -81,7 +84,9 @@ public class GSpinCommand implements CommandExecutor {
             return true;
         }
 
-        if(gSitMain.getPoseService().createPose(block, player, Pose.SPIN_ATTACK) == null) gSitMain.getMessageService().sendMessage(sender, "Messages.action-pose-error");
+        pose = gSitMain.getPoseService().createPose(block, player, PoseType.SPIN);
+        if(pose == null) gSitMain.getMessageService().sendMessage(sender, "Messages.action-pose-error");
+
         return true;
     }
 

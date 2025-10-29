@@ -5,8 +5,8 @@ import dev.geco.gsit.api.event.PlayerCrawlEvent;
 import dev.geco.gsit.api.event.PlayerStopCrawlEvent;
 import dev.geco.gsit.api.event.PrePlayerCrawlEvent;
 import dev.geco.gsit.api.event.PrePlayerStopCrawlEvent;
-import dev.geco.gsit.object.GStopReason;
-import dev.geco.gsit.object.IGCrawl;
+import dev.geco.gsit.model.StopReason;
+import dev.geco.gsit.model.Crawl;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
@@ -18,9 +18,9 @@ public class CrawlService {
 
     private final GSitMain gSitMain;
     private final boolean available;
-    private final HashMap<UUID, IGCrawl> crawls = new HashMap<>();
-    private int crawlUsageCount = 0;
-    private long crawlUsageNanoTime = 0;
+    private final HashMap<UUID, Crawl> crawls = new HashMap<>();
+    private int crawlCount = 0;
+    private long crawlTime = 0;
 
     public CrawlService(GSitMain gSitMain) {
         this.gSitMain = gSitMain;
@@ -29,31 +29,31 @@ public class CrawlService {
 
     public boolean isAvailable() { return available; }
 
-    public HashMap<UUID, IGCrawl> getAllCrawls() { return crawls; }
+    public HashMap<UUID, Crawl> getAllCrawls() { return crawls; }
 
     public boolean isPlayerCrawling(Player player) { return crawls.containsKey(player.getUniqueId()); }
 
-    public IGCrawl getCrawlByPlayer(Player player) { return crawls.get(player.getUniqueId()); }
+    public Crawl getCrawlByPlayer(Player player) { return crawls.get(player.getUniqueId()); }
 
-    public void removeAllCrawls() { for(IGCrawl crawl : new ArrayList<>(crawls.values())) stopCrawl(crawl, GStopReason.PLUGIN); }
+    public void removeAllCrawls() { for(Crawl crawl : new ArrayList<>(crawls.values())) stopCrawl(crawl, StopReason.PLUGIN); }
 
-    public IGCrawl startCrawl(Player player) {
+    public Crawl startCrawl(Player player) {
         PrePlayerCrawlEvent prePlayerCrawlEvent = new PrePlayerCrawlEvent(player);
         Bukkit.getPluginManager().callEvent(prePlayerCrawlEvent);
         if(prePlayerCrawlEvent.isCancelled()) return null;
 
         if(gSitMain.getConfigService().CUSTOM_MESSAGE) gSitMain.getMessageService().sendActionBarMessage(player, "Messages.action-crawl-info");
 
-        IGCrawl crawl = gSitMain.getEntityUtil().createCrawl(player);
+        Crawl crawl = gSitMain.getEntityUtil().createCrawl(player);
         crawl.start();
         crawls.put(player.getUniqueId(), crawl);
-        crawlUsageCount++;
+        crawlCount++;
         Bukkit.getPluginManager().callEvent(new PlayerCrawlEvent(crawl));
 
         return crawl;
     }
 
-    public boolean stopCrawl(IGCrawl crawl, GStopReason stopReason) {
+    public boolean stopCrawl(Crawl crawl, StopReason stopReason) {
         PrePlayerStopCrawlEvent prePlayerStopCrawlEvent = new PrePlayerStopCrawlEvent(crawl, stopReason);
         Bukkit.getPluginManager().callEvent(prePlayerStopCrawlEvent);
         if(prePlayerStopCrawlEvent.isCancelled() && stopReason.isCancellable()) return false;
@@ -61,18 +61,18 @@ public class CrawlService {
         crawls.remove(crawl.getPlayer().getUniqueId());
         crawl.stop();
         Bukkit.getPluginManager().callEvent(new PlayerStopCrawlEvent(crawl, stopReason));
-        crawlUsageNanoTime += crawl.getLifetimeInNanoSeconds();
+        crawlTime += crawl.getLifetimeInNanoSeconds();
 
         return true;
     }
 
-    public int getCrawlUsageCount() { return crawlUsageCount; }
+    public int getCrawlCount() { return this.crawlCount; }
 
-    public long getCrawlUsageTimeInSeconds() { return crawlUsageNanoTime / 1_000_000_000; }
+    public int getCrawlTime() { return Math.toIntExact(this.crawlTime / 1_000_000_000); }
 
-    public void resetCrawlUsageStats() {
-        crawlUsageCount = 0;
-        crawlUsageNanoTime = 0;
+    public void resetCrawlStats() {
+        crawlCount = 0;
+        crawlTime = 0;
     }
 
 }

@@ -2,8 +2,9 @@ package dev.geco.gsit;
 
 import dev.geco.gsit.api.event.GSitLoadedEvent;
 import dev.geco.gsit.api.event.GSitReloadEvent;
-import dev.geco.gsit.cmd.GBellyFlopCommand;
+import dev.geco.gsit.cmd.GBellyflopCommand;
 import dev.geco.gsit.cmd.GCrawlCommand;
+import dev.geco.gsit.cmd.GLayBackCommand;
 import dev.geco.gsit.cmd.GLayCommand;
 import dev.geco.gsit.cmd.GSitCommand;
 import dev.geco.gsit.cmd.GSitReloadCommand;
@@ -22,6 +23,7 @@ import dev.geco.gsit.link.GriefPreventionLink;
 import dev.geco.gsit.link.PlaceholderAPILink;
 import dev.geco.gsit.link.PlotSquaredLink;
 import dev.geco.gsit.link.WorldGuardLink;
+import dev.geco.gsit.model.PoseType;
 import dev.geco.gsit.service.ConfigService;
 import dev.geco.gsit.service.CrawlService;
 import dev.geco.gsit.service.DataService;
@@ -36,9 +38,9 @@ import dev.geco.gsit.service.UpdateService;
 import dev.geco.gsit.service.VersionService;
 import dev.geco.gsit.service.message.PaperMessageService;
 import dev.geco.gsit.service.message.SpigotMessageService;
-import dev.geco.gsit.util.EntityUtil;
+import dev.geco.gsit.util.LegacyEntityUtil;
 import dev.geco.gsit.util.EnvironmentUtil;
-import dev.geco.gsit.util.IEntityUtil;
+import dev.geco.gsit.util.EntityUtil;
 import dev.geco.gsit.util.PassengerUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
@@ -47,6 +49,7 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class GSitMain extends JavaPlugin {
 
@@ -70,11 +73,12 @@ public class GSitMain extends JavaPlugin {
     private EntityEventHandler entityEventHandler;
     private PassengerUtil passengerUtil;
     private EnvironmentUtil environmentUtil;
-    private IEntityUtil entityUtil;
+    private EntityUtil entityUtil;
     private GriefPreventionLink griefPreventionLink;
     private PlaceholderAPILink placeholderAPILink;
     private PlotSquaredLink plotSquaredLink;
     private WorldGuardLink worldGuardLink;
+    private BStatsMetric bStatsMetric;
     private boolean supportsTaskFeature = false;
     private boolean isPaperServer = false;
     private boolean isFoliaServer = false;
@@ -111,7 +115,7 @@ public class GSitMain extends JavaPlugin {
 
     public EnvironmentUtil getEnvironmentUtil() { return environmentUtil; }
 
-    public IEntityUtil getEntityUtil() { return entityUtil; }
+    public EntityUtil getEntityUtil() { return entityUtil; }
 
     public GriefPreventionLink getGriefPreventionLink() { return griefPreventionLink; }
 
@@ -156,7 +160,7 @@ public class GSitMain extends JavaPlugin {
     public void onEnable() {
         if(!versionCheck()) return;
 
-        entityUtil = versionService.isNewerOrVersion(18, 0) ? (IEntityUtil) versionService.getPackageObjectInstance("util.EntityUtil", this) : new EntityUtil(this);
+        entityUtil = versionService.isNewerOrVersion(18, 0) ? (EntityUtil) versionService.getPackageObjectInstance("util.EntityUtil", this) : new LegacyEntityUtil(this);
 
         loadPluginDependencies();
         loadSettings(Bukkit.getConsoleSender());
@@ -175,6 +179,7 @@ public class GSitMain extends JavaPlugin {
 
     public void onDisable() {
         unload();
+        bStatsMetric.shutdown();
         messageService.sendMessage(Bukkit.getConsoleSender(), "Plugin.plugin-disabled");
     }
 
@@ -216,7 +221,10 @@ public class GSitMain extends JavaPlugin {
         getCommand("glay").setExecutor(new GLayCommand(this));
         getCommand("glay").setTabCompleter(new EmptyTabComplete());
         getCommand("glay").setPermissionMessage(messageService.getMessage("Messages.command-permission-error"));
-        getCommand("gbellyflop").setExecutor(new GBellyFlopCommand(this));
+        getCommand("glayback").setExecutor(new GLayBackCommand(this));
+        getCommand("glayback").setTabCompleter(new EmptyTabComplete());
+        getCommand("glayback").setPermissionMessage(messageService.getMessage("Messages.command-permission-error"));
+        getCommand("gbellyflop").setExecutor(new GBellyflopCommand(this));
         getCommand("gbellyflop").setTabCompleter(new EmptyTabComplete());
         getCommand("gbellyflop").setPermissionMessage(messageService.getMessage("Messages.command-permission-error"));
         getCommand("gspin").setExecutor(new GSpinCommand(this));
@@ -317,23 +325,30 @@ public class GSitMain extends JavaPlugin {
     }
 
     private void setupBStatsMetric() {
-        BStatsMetric bStatsMetric = new BStatsMetric(this, BSTATS_RESOURCE_ID);
+        bStatsMetric = new BStatsMetric(this, BSTATS_RESOURCE_ID);
 
         bStatsMetric.addCustomChart(new BStatsMetric.SimplePie("plugin_language", () -> configService.L_LANG));
         bStatsMetric.addCustomChart(new BStatsMetric.AdvancedPie("minecraft_version_player_amount", () -> Map.of(versionService.getServerVersion(), Bukkit.getOnlinePlayers().size())));
-        bStatsMetric.addCustomChart(new BStatsMetric.SingleLineChart("use_sit_feature", () -> sitService.getSitUsageCount()));
-        bStatsMetric.addCustomChart(new BStatsMetric.SingleLineChart("seconds_sit_feature", () -> (int) sitService.getSitUsageTimeInSeconds()));
-        bStatsMetric.addCustomChart(new BStatsMetric.SingleLineChart("use_psit_feature", () -> playerSitService.getPlayerSitUsageCount()));
-        bStatsMetric.addCustomChart(new BStatsMetric.SingleLineChart("seconds_psit_feature", () -> (int) playerSitService.getPlayerSitUsageTimeInSeconds()));
-        bStatsMetric.addCustomChart(new BStatsMetric.SingleLineChart("use_pose_feature", () -> poseService.getPoseUsageCount()));
-        bStatsMetric.addCustomChart(new BStatsMetric.SingleLineChart("seconds_pose_feature", () -> (int) poseService.getPoseUsageTimeInSeconds()));
-        bStatsMetric.addCustomChart(new BStatsMetric.SingleLineChart("use_crawl_feature", () -> crawlService.getCrawlUsageCount()));
-        bStatsMetric.addCustomChart(new BStatsMetric.SingleLineChart("seconds_crawl_feature", () -> (int) crawlService.getCrawlUsageTimeInSeconds()));
+        bStatsMetric.addCustomChart(new BStatsMetric.SingleLineChart("sit_count", () -> sitService.getSitCount()));
+        bStatsMetric.addCustomChart(new BStatsMetric.SingleLineChart("sit_time", () -> sitService.getSitTime()));
+        bStatsMetric.addCustomChart(new BStatsMetric.SingleLineChart("player_sit_count", () -> playerSitService.getPlayerSitCount()));
+        bStatsMetric.addCustomChart(new BStatsMetric.SingleLineChart("player_sit_time", () -> playerSitService.getPlayerSitTime()));
+        bStatsMetric.addCustomChart(new BStatsMetric.SingleLineChart("pose_count", () -> poseService.getPoseCount().values().stream().mapToInt(Integer::intValue).sum()));
+        bStatsMetric.addCustomChart(new BStatsMetric.SingleLineChart("pose_time", () -> poseService.getPoseTime().values().stream().mapToInt(Integer::intValue).sum()));
+        bStatsMetric.addCustomChart(new BStatsMetric.SingleLineChart("crawl_count", () -> crawlService.getCrawlCount()));
+        bStatsMetric.addCustomChart(new BStatsMetric.SingleLineChart("crawl_time", () -> crawlService.getCrawlTime()));
 
-        sitService.resetSitUsageStats();
-        playerSitService.resetPlayerSitUsageStats();
-        poseService.resetPoseUsageStats();
-        crawlService.resetCrawlUsageStats();
+        for(PoseType poseType : PoseType.values()) {
+            bStatsMetric.addCustomChart(new BStatsMetric.SingleLineChart(poseType.getName() + "_count", () -> poseService.getPoseCount().getOrDefault(poseType,0)));
+            bStatsMetric.addCustomChart(new BStatsMetric.SingleLineChart(poseType.getName() + "_time", () -> Math.toIntExact(poseService.getPoseTime().getOrDefault(poseType, 0))));
+        }
+
+        bStatsMetric.setCollectCallback(() -> {
+            sitService.resetSitStats();
+            playerSitService.resetPlayerSitStats();
+            poseService.resetPoseStats();
+            crawlService.resetCrawlStats();
+        });
     }
 
 }
