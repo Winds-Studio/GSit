@@ -81,7 +81,7 @@ permissions:
 
   GSit.SitToggle:
     default: true
-    description: Toggle Sit ability | Permission
+    description: Toggle sit ability | Permission
 
   GSit.PlayerSit.*:
     default: op
@@ -103,12 +103,17 @@ permissions:
     description: Pose | Permissions
     children:
       GSit.Lay: true
+      GSit.LayBack: true
       GSit.BellyFlop: true
       GSit.Spin: true
 
   GSit.Lay:
     default: true
     description: Lay command | Permission
+
+  GSit.LayBack:
+    default: true
+    description: LayBack command | Permission
 
   GSit.BellyFlop:
     default: true
@@ -136,7 +141,7 @@ permissions:
 
   GSit.CrawlToggle:
     default: true
-    description: Toggle Crawl ability | Permission
+    description: Toggle crawl ability | Permission
 
   GSit.Kick.*:
     default: op
@@ -157,8 +162,13 @@ permissions:
     default: op
     description: ByPass | Permissions
     children:
+      GSit.ByPass.Command: true
       GSit.ByPass.World: true
       GSit.ByPass.Region: true
+
+  GSit.ByPass.Command:
+    default: op
+    description: ByPass command | Permission
 
   GSit.ByPass.World:
     default: op
